@@ -4,42 +4,38 @@ import torch
 from pytorch_lightning import LightningModule
 from pytorch_lightning.metrics.classification import Accuracy
 
-from src.models.modules.simple_dense_net import SimpleDenseNet
+from src.models.modules import gat, jumping_knowledge, graph_sage
 
 
-class MNISTLitModel(LightningModule):
-    """
-    Example of LightningModule for MNIST classification.
-
-    A LightningModule organizes your PyTorch code into 5 sections:
-        - Computations (init).
-        - Train loop (training_step)
-        - Validation loop (validation_step)
-        - Test loop (test_step)
-        - Optimizers (configure_optimizers)
-
-    Read the docs:
-        https://pytorch-lightning.readthedocs.io/en/latest/common/lightning_module.html
-    """
+class SuperpixelClassifierModel(LightningModule):
+    """LightningModule for image classification from superpixels."""
 
     def __init__(
         self,
-        input_size: int = 784,
-        lin1_size: int = 256,
-        lin2_size: int = 256,
-        lin3_size: int = 256,
+        architecture: str = "GraphSAGE",
+        aggregation_method: str = "concat",
+        num_node_features: int = 3,
+        num_conv_layers: int = 3,
+        conv_size: int = 128,
+        lin_size: int = 128,
         output_size: int = 10,
         lr: float = 0.001,
-        weight_decay: float = 0.0005,
+        weight_decay: float = 0,
         **kwargs
     ):
         super().__init__()
 
-        # this line ensures params passed to LightningModule will be saved to ckpt
-        # it also allows to access params with 'self.hparams' attribute
         self.save_hyperparameters()
 
-        self.model = SimpleDenseNet(hparams=self.hparams)
+        # init network architecture
+        if self.hparams.architecture == "GraphSAGE":
+            self.model = graph_sage.GraphSage(hparams=self.hparams)
+        elif self.hparams.architecture == "GAT":
+            self.model = gat.GAT(hparams=self.hparams)
+        elif self.hparams.architecture == "JumpingKnowledge":
+            self.model = jumping_knowledge.JK(hparams=self.hparams)
+        else:
+            raise Exception("Incorrect architecture name!")
 
         # loss function
         self.criterion = torch.nn.CrossEntropyLoss()
@@ -57,27 +53,20 @@ class MNISTLitModel(LightningModule):
             "val/loss": [],
         }
 
-    def forward(self, x: torch.Tensor):
-        return self.model(x)
+    def forward(self, batch: Any):
+        return self.model(batch)
 
     def step(self, batch: Any):
-        x, y = batch
-        logits = self.forward(x)
-        loss = self.criterion(logits, y)
+        logits = self.forward(batch)
+        loss = self.criterion(logits, batch.y)
         preds = torch.argmax(logits, dim=1)
-        return loss, preds, y
+        return loss, preds, batch.y
 
     def training_step(self, batch: Any, batch_idx: int):
         loss, preds, targets = self.step(batch)
-
-        # log train metrics
         acc = self.train_accuracy(preds, targets)
         self.log("train/loss", loss, on_step=False, on_epoch=True, prog_bar=False)
         self.log("train/acc", acc, on_step=False, on_epoch=True, prog_bar=True)
-
-        # we can return here dict with any tensors
-        # and then read it in some callback or in training_epoch_end() below
-        # remember to always return loss from training_step, or else backpropagation will fail!
         return {"loss": loss, "preds": preds, "targets": targets}
 
     def training_epoch_end(self, outputs: List[Any]):
@@ -89,8 +78,6 @@ class MNISTLitModel(LightningModule):
 
     def validation_step(self, batch: Any, batch_idx: int):
         loss, preds, targets = self.step(batch)
-
-        # log val metrics
         acc = self.val_accuracy(preds, targets)
         self.log("val/loss", loss, on_step=False, on_epoch=True, prog_bar=False)
         self.log("val/acc", acc, on_step=False, on_epoch=True, prog_bar=True)
@@ -106,8 +93,6 @@ class MNISTLitModel(LightningModule):
 
     def test_step(self, batch: Any, batch_idx: int):
         loss, preds, targets = self.step(batch)
-
-        # log test metrics
         acc = self.test_accuracy(preds, targets)
         self.log("test/loss", loss, on_step=False, on_epoch=True)
         self.log("test/acc", acc, on_step=False, on_epoch=True)
@@ -118,12 +103,6 @@ class MNISTLitModel(LightningModule):
         pass
 
     def configure_optimizers(self):
-        """Choose what optimizers and learning-rate schedulers to use in your optimization.
-        Normally you'd need one. But in the case of GANs or similar you might have multiple.
-
-        See examples here:
-            https://pytorch-lightning.readthedocs.io/en/latest/common/lightning_module.html#configure-optimizers
-        """
         return torch.optim.Adam(
             params=self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay
         )
