@@ -1,7 +1,7 @@
 from typing import Callable, Optional, Sequence
 
 from pytorch_lightning import LightningDataModule
-from torch_geometric.data import DataLoader, Dataset
+from torch_geometric.data import DataLoader, Dataset, RandomNodeSampler
 
 from src.datamodules.datasets.hyperspectral_dataset import HyperSpectralCustomDataset
 
@@ -112,12 +112,11 @@ class HyperSpectralDataModule(LightningDataModule):
         self.data_test = dataset
 
     def train_dataloader(self):
-        return DataLoader(
-            dataset=self.data_train,
-            batch_size=self.batch_size,
+        return RandomNodeSampler(
+            self.data_train.data,
+            num_parts=6,
             num_workers=self.num_workers,
-            pin_memory=self.pin_memory,
-            shuffle=True,
+            shuffle=True
         )
 
     def val_dataloader(self):

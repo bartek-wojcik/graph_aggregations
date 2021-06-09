@@ -1,7 +1,7 @@
-_target_: src.datamodules.mnist_sp_datamodule.MNISTSuperpixels
+_target_: src.datamodules.fashion_mnist_sp_datamodule.FashionMNISTSuperpixelsDataModule
 
 data_dir: ${data_dir}
-batch_size: 64
+batch_size: 32
 train_val_test_split: [ 55_000, 5_000, 10_000 ]
 pin_memory: True
 num_workers: 10

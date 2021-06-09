@@ -7,7 +7,6 @@ from torch_geometric.transforms import RadiusGraph, ToSLIC
 from torchvision import transforms as T
 from torchvision.datasets import VOCDetection
 
-
 class VocSuperpixelsDataset(InMemoryDataset):
     """Dataset which converts VOC to superpixel graphs (on first run only)."""
 
@@ -58,10 +57,10 @@ class VocSuperpixelsDataset(InMemoryDataset):
         filename += ".pt"
         return filename
 
-    def encode_labels(self, label):
-        objects = filter(lambda o: o['difficult'] == 0, label['annotation']['object'])
-        labels = map(lambda o: o['name'], objects)
-        return [category in labels for category in self.categories]
+    def format_label(self, label):
+        objects = filter(lambda o: o['difficult'] == '0', label['annotation']['object'])
+        labels = list(map(lambda o: o['name'], objects))
+        return torch.tensor([[int(category in labels) for category in self.categories]], dtype=torch.int)
 
     def download(self):
         VOCDetection(
@@ -79,7 +78,7 @@ class VocSuperpixelsDataset(InMemoryDataset):
                 dataset, desc="Generating superpixels", colour="GREEN"
         ):
             datapoint = graph
-            datapoint.y = torch.tensor(self.encode_labels(label))
+            datapoint.y = self.format_label(label)
             data_list.append(datapoint)
 
         if self.pre_filter is not None:

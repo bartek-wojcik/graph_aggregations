@@ -13,10 +13,10 @@ class VocSuperpixelsDataModule(LightningDataModule):
     def __init__(
             self,
             data_dir: str = "data/",
-            batch_size: int = 32,
+            batch_size: int = 16,
             num_workers: int = 0,
             pin_memory: bool = False,
-            train_val_test_split: Sequence[int] = (7000, 2540, 4000),
+            train_val_test_split: Sequence[int] = (8000, 1000, 2540),
             n_segments: int = 100,
             max_num_neighbors: int = 8,
             r: int = 10,
@@ -49,7 +49,7 @@ class VocSuperpixelsDataModule(LightningDataModule):
 
     @property
     def num_node_features(self) -> int:
-        return 1
+        return 3
 
     @property
     def num_edge_features(self) -> int:
@@ -57,7 +57,7 @@ class VocSuperpixelsDataModule(LightningDataModule):
 
     @property
     def num_classes(self) -> int:
-        return 20
+        return 21
 
     def prepare_data(self):
         """Download data if needed. Generate superpixel graphs. Apply pre-transforms."""

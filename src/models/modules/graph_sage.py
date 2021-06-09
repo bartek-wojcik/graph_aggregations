@@ -17,15 +17,6 @@ class GraphSage(nn.Module):
 
         activation = nn.ReLU
 
-        if hparams["aggregation_method"] == "concat":
-            self.aggregation_method = None
-        elif hparams["aggregation_method"] == "mean":
-            self.aggregation_method = None
-        elif hparams["aggregation_method"] == "max":
-            self.aggregation_method = None
-        else:
-            raise Exception("Invalid aggregation method name")
-
         self.conv_modules = nn.ModuleList()
         self.activ_modules = nn.ModuleList()
 

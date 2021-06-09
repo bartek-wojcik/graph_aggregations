@@ -1,5 +1,5 @@
 _target_: src.models.sp_classifier_model.SuperpixelClassifierModel
-num_node_features: 1
+num_node_features: 3
 num_conv_layers: 2
 conv_size: 128
 lin_size: 128

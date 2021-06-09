@@ -1,0 +1,7 @@
+_target_: src.datamodules.voc_datamodule.VocSuperpixelsDataModule
+
+data_dir: ${data_dir}
+batch_size: 16
+train_val_test_split: [ 8000, 1000, 2540 ]
+pin_memory: True
+num_workers: 10

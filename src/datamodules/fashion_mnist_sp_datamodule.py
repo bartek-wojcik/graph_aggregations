@@ -1,36 +1,12 @@
 from typing import Optional, Sequence
-
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import random_split
 from torch_geometric import transforms as T
 from torch_geometric.data import DataLoader, Dataset
-
 from src.datamodules.datasets.sp_fashion_mnist_dataset import FashionMNISTSuperpixelsDataset
 
 
 class FashionMNISTSuperpixelsDataModule(LightningDataModule):
-    """DataModule which converts FashionMNIST image dataset to superpixel graphs.
-    Conversion happens on first run only.
-    When changing pre_transforms you need to manually delete previously generated dataset files!
-
-    --------Example--------
-
-        from datamodules.mnist_datamodule import FashionMNISTSuperpixelsDataModule
-        from pytorch_lightning import seed_everything
-
-        # seeding enables split reproducibility
-        seed_everything(123)
-
-        dm = FashionMNISTSuperpixelsDataModule()
-        dm.prepare_data()
-        dm.setup()
-
-        for batch in dm.train_dataloader():
-            x, y, pos, edge_index, batch = batch.x, batch.y, batch.pos, batch.edge_index, batch.batch
-
-    -----------------------
-
-    """
 
     def __init__(
         self,
@@ -45,20 +21,6 @@ class FashionMNISTSuperpixelsDataModule(LightningDataModule):
         loop: bool = True,
         **kwargs,
     ):
-        """
-        Args:
-            data_dir: Path to data folder.
-            batch_size: Batch size.
-            num_workers: Number of processes for data loading.
-            pin_memory: Whether to pin CUDA memory (slight speed up for GPU users).
-            train_val_test_split: Number of datapoints for training, validation and testing. Should sum up to 70_000.
-            n_segments: Desired number of superpixels per image.
-            max_num_neighbors: Maximum number of edges for each node/superpixel.
-            r: Connect node/superpixel to all nodes in range r (based on superpixel position).
-            loop: Whether to add self-loops to nodes.
-            **kwargs: Extra parameters passed to SLIC algorithm, learn more here:
-                        https://scikit-image.org/docs/dev/api/skimage.segmentation.html#skimage.segmentation.slic
-        """
         super().__init__()
 
         self.data_dir = data_dir

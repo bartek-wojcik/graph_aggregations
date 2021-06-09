@@ -1,82 +1,92 @@
 import os
+from typing import Callable, Optional
 
 import torch
-from torch_geometric.data import (InMemoryDataset, Data, download_url,
-                                  extract_tar)
+from torch.utils.data import ConcatDataset
+from torch_geometric.data import InMemoryDataset
+from torch_geometric.transforms import RadiusGraph, ToSLIC
+from torchvision import transforms as T
+from torchvision.datasets import MNIST
+from tqdm import tqdm
 
 
-class MNISTSuperpixels(InMemoryDataset):
-    r"""MNIST superpixels dataset from the `"Geometric Deep Learning on
-    Graphs and Manifolds Using Mixture Model CNNs"
-    <https://arxiv.org/abs/1611.08402>`_ paper, containing 70,000 graphs with
-    75 nodes each.
-    Every graph is labeled by one of 10 classes.
+class MNISTSuperpixelsDataset(InMemoryDataset):
 
-    Args:
-        root (string): Root directory where the dataset should be saved.
-        train (bool, optional): If :obj:`True`, loads the training dataset,
-            otherwise the test dataset. (default: :obj:`True`)
-        transform (callable, optional): A function/transform that takes in an
-            :obj:`torch_geometric.data.Data` object and returns a transformed
-            version. The data object will be transformed before every access.
-            (default: :obj:`None`)
-        pre_transform (callable, optional): A function/transform that takes in
-            an :obj:`torch_geometric.data.Data` object and returns a
-            transformed version. The data object will be transformed before
-            being saved to disk. (default: :obj:`None`)
-        pre_filter (callable, optional): A function that takes in an
-            :obj:`torch_geometric.data.Data` object and returns a boolean
-            value, indicating whether the data object should be included in the
-            final dataset. (default: :obj:`None`)
-    """
-
-    url = ('https://graphics.cs.tu-dortmund.de/fileadmin/ls7-www/misc/cvpr/'
-           'mnist_superpixels.tar.gz')
-
-    def __init__(self, root, train=True, transform=None, pre_transform=None,
-                 pre_filter=None):
-        super(MNISTSuperpixels, self).__init__(root, transform, pre_transform,
-                                               pre_filter)
-        path = self.processed_paths[0] if train else self.processed_paths[1]
-        self.data, self.slices = torch.load(path)
+    def __init__(
+            self,
+            root: str = "data/",
+            n_segments: int = 75,
+            max_num_neighbors: int = 8,
+            r: float = 10,
+            loop: bool = True,
+            transform: Optional[Callable] = None,
+            pre_transform: Optional[Callable] = None,
+            **kwargs,
+    ):
+        self.data_dir = root
+        self.n_segments = n_segments
+        self.max_num_neighbors = max_num_neighbors
+        self.r = r
+        self.loop = loop
+        self.slic_kwargs = kwargs
+        self.base_transform = T.Compose(
+            [
+                T.ToTensor(),
+                ToSLIC(n_segments=n_segments, **kwargs),
+                RadiusGraph(r=r, max_num_neighbors=max_num_neighbors, loop=loop),
+            ]
+        )
+        super().__init__(os.path.join(root, "MNIST"), transform, pre_transform)
+        self.data, self.slices = torch.load(self.processed_paths[0])
 
     @property
     def raw_file_names(self):
-        return ['training.pt', 'test.pt']
+        return []
 
     @property
     def processed_file_names(self):
-        return ['training.pt', 'test.pt']
+        """Dynamically generates filename for processed dataset based on superpixel parameters."""
+        filename = ""
+        filename += f"sp({self.n_segments})_"
+        filename += f"maxn({self.max_num_neighbors})_"
+        filename += f"r({self.r})_"
+        filename += f"loop({self.loop})"
+        for name, value in self.slic_kwargs.items():
+            filename += f"_{name}({value})"
+        filename += ".pt"
+        return filename
 
     def download(self):
-        path = download_url(self.url, self.raw_dir)
-        extract_tar(path, self.raw_dir, mode='r')
-        os.unlink(path)
+        MNIST(
+            self.data_dir, train=True, download=True, transform=self.base_transform
+        )
+        MNIST(
+            self.data_dir, train=False, download=True, transform=self.base_transform
+        )
 
     def process(self):
-        for raw_path, path in zip(self.raw_paths, self.processed_paths):
-            x, edge_index, edge_slice, pos, y = torch.load(raw_path)
-            edge_index, y = edge_index.to(torch.long), y.to(torch.long)
-            m, n = y.size(0), 75
-            x, pos = x.view(m * n, 1), pos.view(m * n, 2)
-            node_slice = torch.arange(0, (m + 1) * n, step=n, dtype=torch.long)
-            graph_slice = torch.arange(m + 1, dtype=torch.long)
-            self.data = Data(x=x, edge_index=edge_index, y=y, pos=pos)
-            self.slices = {
-                'x': node_slice,
-                'edge_index': edge_slice,
-                'y': graph_slice,
-                'pos': node_slice
-            }
+        trainset = MNIST(
+            self.data_dir, train=True, download=True, transform=self.base_transform
+        )
+        testset = MNIST(
+            self.data_dir, train=False, download=True, transform=self.base_transform
+        )
+        dataset = ConcatDataset(datasets=[trainset, testset])
 
-            if self.pre_filter is not None:
-                data_list = [self.get(idx) for idx in range(len(self))]
-                data_list = [d for d in data_list if self.pre_filter(d)]
-                self.data, self.slices = self.collate(data_list)
+        # convert to superpixels
+        data_list = []
+        for graph, label in tqdm(
+                dataset, desc="Generating superpixels", colour="GREEN"
+        ):
+            datapoint = graph
+            datapoint.y = torch.tensor(label)
+            data_list.append(datapoint)
 
-            if self.pre_transform is not None:
-                data_list = [self.get(idx) for idx in range(len(self))]
-                data_list = [self.pre_transform(data) for data in data_list]
-                self.data, self.slices = self.collate(data_list)
+        if self.pre_filter is not None:
+            data_list = [data for data in data_list if self.pre_filter(data)]
 
-            torch.save((self.data, self.slices), path)
+        if self.pre_transform is not None:
+            data_list = [self.pre_transform(data) for data in data_list]
+
+        data, slices = self.collate(data_list)
+        torch.save((data, slices), self.processed_paths[0])

@@ -1,0 +1,32 @@
+# @package _global_
+
+defaults:
+    - override /trainer: default_trainer.yaml
+    - override /model: sp_classifier_model.yaml
+    - override /datamodule: fashion_mnist_sp.yaml
+    - override /callbacks: default_callbacks.yaml
+    - override /logger: wandb.yaml
+
+
+seed: 12345
+
+trainer:
+    min_epochs: 10
+    max_epochs: 100
+    gradient_clip_val: 0.5
+
+model:
+  architecture: GCN
+  num_node_features: 3
+  num_conv_layers: 3
+  conv_size: 256
+  lin_size: 64
+  output_size: 10
+  lr: 0.001
+  weight_decay: 0
+
+callbacks:
+  model_checkpoint:
+    monitor: "val/acc"
+  early_stopping:
+    monitor: "val/acc"

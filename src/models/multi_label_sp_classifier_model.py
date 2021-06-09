@@ -1,11 +1,12 @@
 from typing import Any, List
+
 import torch
 from pytorch_lightning import LightningModule
 from pytorch_lightning.metrics.classification import Accuracy
 from src.models.modules import gat, jumping_knowledge, graph_sage, gcn
 
 
-class SuperpixelClassifierModel(LightningModule):
+class MultiLabelSuperpixelClassifierModel(LightningModule):
     """LightningModule for image classification from superpixels."""
 
     def __init__(
@@ -38,7 +39,7 @@ class SuperpixelClassifierModel(LightningModule):
             raise Exception("Incorrect architecture name!")
 
         # loss function
-        self.criterion = torch.nn.CrossEntropyLoss()
+        self.criterion = torch.nn.BCEWithLogitsLoss()
 
         # use separate metric instance for train, val and test step
         # to ensure a proper reduction over the epoch
@@ -58,8 +59,8 @@ class SuperpixelClassifierModel(LightningModule):
 
     def step(self, batch: Any):
         logits = self.forward(batch)
-        loss = self.criterion(logits, batch.y)
-        preds = torch.argmax(logits, dim=1)
+        loss = self.criterion(logits, batch.y.type(torch.float))
+        preds = logits > 0.5
         return loss, preds, batch.y
 
     def training_step(self, batch: Any, batch_idx: int):
