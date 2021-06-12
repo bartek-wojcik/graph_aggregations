@@ -13,6 +13,6 @@ python run.py experiment=gcn_voc
 python run.py experiment=graphsage_fashion_mnist
 python run.py experiment=gat_fashion_mnist
 python run.py experiment=jk_max_fashion_mnist
-python run.py experiment=jk_lstm_fashion_mnist
 python run.py experiment=jk_cat_fashion_mnist
 python run.py experiment=gcn_fashion_mnist
+python run.py experiment=jk_lstm_fashion_mnist
