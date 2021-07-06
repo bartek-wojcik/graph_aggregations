@@ -1,0 +1,7 @@
+_target_: src.datamodules.cifar10_sp_datamodule.CIFAR10SuperpixelsDataModule
+
+data_dir: ${data_dir}
+batch_size: 32
+train_val_test_split: [ 45_000, 5_000, 10_000 ]
+pin_memory: True
+num_workers: 10

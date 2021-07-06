@@ -2,8 +2,8 @@
 
 defaults:
     - override /trainer: default_trainer.yaml
-    - override /model: multi_label_sp_classifier_model.yaml
-    - override /datamodule: voc_sp.yaml
+    - override /model: sp_classifier_model.yaml
+    - override /datamodule: cifar10_sp.yaml
     - override /callbacks: default_callbacks.yaml
     - override /logger: wandb.yaml
 
@@ -16,12 +16,12 @@ trainer:
     gradient_clip_val: 0.5
 
 model:
-  architecture: GAT
-  num_node_features: 5
+  architecture: GCN
+  num_node_features: 3
   num_conv_layers: 3
   conv_size: 256
   lin_size: 64
-  output_size: 21
+  output_size: 10
   lr: 0.001
   weight_decay: 0
 

@@ -6,21 +6,22 @@ from torch.utils.data import ConcatDataset
 from torch_geometric.data import InMemoryDataset
 from torch_geometric.transforms import RadiusGraph, ToSLIC, KNNGraph
 from torchvision import transforms as T
-from torchvision.datasets import MNIST
+from torchvision.datasets import FashionMNIST, CIFAR10
 from tqdm import tqdm
 
 
-class MNISTSuperpixelsDataset(InMemoryDataset):
+class CIFAR10SuperpixelsDataset(InMemoryDataset):
+    """Dataset which converts FashionMNISTS to superpixel graphs (on first run only)."""
 
     def __init__(
-            self,
-            root: str = "data/",
-            n_segments: int = 75,
-            k: int = 10,
-            loop: bool = True,
-            transform: Optional[Callable] = None,
-            pre_transform: Optional[Callable] = None,
-            **kwargs,
+        self,
+        root: str = "data/",
+        n_segments: int = 100,
+        k: int = 10,
+        loop: bool = True,
+        transform: Optional[Callable] = None,
+        pre_transform: Optional[Callable] = None,
+        **kwargs,
     ):
         self.data_dir = root
         self.n_segments = n_segments
@@ -34,7 +35,7 @@ class MNISTSuperpixelsDataset(InMemoryDataset):
                 KNNGraph(k=k, loop=loop),
             ]
         )
-        super().__init__(os.path.join(root, "MNIST"), transform, pre_transform)
+        super().__init__(os.path.join(root, "CIFAR10"), transform, pre_transform)
         self.data, self.slices = torch.load(self.processed_paths[0])
 
     @property
@@ -54,18 +55,18 @@ class MNISTSuperpixelsDataset(InMemoryDataset):
         return filename
 
     def download(self):
-        MNIST(
+        FashionMNIST(
             self.data_dir, train=True, download=True, transform=self.base_transform
         )
-        MNIST(
+        FashionMNIST(
             self.data_dir, train=False, download=True, transform=self.base_transform
         )
 
     def process(self):
-        trainset = MNIST(
+        trainset = CIFAR10(
             self.data_dir, train=True, download=True, transform=self.base_transform
         )
-        testset = MNIST(
+        testset = CIFAR10(
             self.data_dir, train=False, download=True, transform=self.base_transform
         )
         dataset = ConcatDataset(datasets=[trainset, testset])

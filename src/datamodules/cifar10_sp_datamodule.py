@@ -1,27 +1,26 @@
 from typing import Optional, Sequence
-
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import random_split
 from torch_geometric import transforms as T
 from torch_geometric.data import DataLoader, Dataset
 
-from src.datamodules.datasets.voc_dataset import VocSuperpixelsDataset
+from src.datamodules.datasets.cifar10_dataset import CIFAR10SuperpixelsDataset
+from src.datamodules.datasets.sp_fashion_mnist_dataset import FashionMNISTSuperpixelsDataset
 
 
-class VocSuperpixelsDataModule(LightningDataModule):
+class CIFAR10SuperpixelsDataModule(LightningDataModule):
 
     def __init__(
-            self,
-            data_dir: str = "data/",
-            batch_size: int = 16,
-            num_workers: int = 0,
-            pin_memory: bool = False,
-            train_val_test_split: Sequence[int] = (8000, 1000, 2540),
-            n_segments: int = 100,
-            max_num_neighbors: int = 8,
-            r: int = 10,
-            loop: bool = True,
-            **kwargs,
+        self,
+        data_dir: str = "data/",
+        batch_size: int = 32,
+        num_workers: int = 0,
+        pin_memory: bool = False,
+        train_val_test_split: Sequence[int] = (45_000, 5_000, 10_000),
+        n_segments: int = 100,
+        k: int = 10,
+        loop: bool = True,
+        **kwargs,
     ):
         super().__init__()
 
@@ -30,6 +29,12 @@ class VocSuperpixelsDataModule(LightningDataModule):
         self.num_workers = num_workers
         self.pin_memory = pin_memory
         self.train_val_test_split = train_val_test_split
+        self.n_segments = n_segments
+        self.k = k
+        self.loop = loop
+        self.slic_kwargs = kwargs
+
+        assert 1 <= n_segments <= 32 * 32
 
         self.pre_transform = T.Compose(
             [
@@ -37,11 +42,6 @@ class VocSuperpixelsDataModule(LightningDataModule):
             ]
         )
         self.transform = None
-        self.n_segments = n_segments
-        self.max_num_neighbors = max_num_neighbors
-        self.r = r
-        self.loop = loop
-        self.slic_kwargs = kwargs
 
         self.data_train: Optional[Dataset] = None
         self.data_val: Optional[Dataset] = None
@@ -57,15 +57,14 @@ class VocSuperpixelsDataModule(LightningDataModule):
 
     @property
     def num_classes(self) -> int:
-        return 21
+        return 10
 
     def prepare_data(self):
         """Download data if needed. Generate superpixel graphs. Apply pre-transforms."""
-        VocSuperpixelsDataset(
+        CIFAR10SuperpixelsDataset(
             root=self.data_dir,
             n_segments=self.n_segments,
-            max_num_neighbors=self.max_num_neighbors,
-            r=self.r,
+            k=self.k,
             loop=self.loop,
             pre_transform=self.pre_transform,
             **self.slic_kwargs,
@@ -73,11 +72,10 @@ class VocSuperpixelsDataModule(LightningDataModule):
 
     def setup(self, stage: Optional[str] = None):
         """Load data. Set variables: self.data_train, self.data_val, self.data_test."""
-        dataset = VocSuperpixelsDataset(
+        dataset = CIFAR10SuperpixelsDataset(
             root=self.data_dir,
             n_segments=self.n_segments,
-            max_num_neighbors=self.max_num_neighbors,
-            r=self.r,
+            k=self.k,
             loop=self.loop,
             pre_transform=self.pre_transform,
             transform=self.transform,

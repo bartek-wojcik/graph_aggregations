@@ -2,7 +2,8 @@
 
 wandb:
     _target_: pytorch_lightning.loggers.wandb.WandbLogger
-    project: "graph_aggregations"
+    project: "aggregations"
+#    project: "graph_aggregations"
     # entity: ""  # set to name of your wandb team or just remove it
     # offline: False  # set True to store all logs only locally
     job_type: "train"

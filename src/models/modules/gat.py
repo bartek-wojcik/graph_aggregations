@@ -1,10 +1,8 @@
-import torch
-from torch import nn
+from torch import nn, sigmoid
 from torch_geometric.nn import (
     GATConv,
     global_max_pool,
 )
-
 
 class GAT(nn.Module):
 
@@ -36,15 +34,13 @@ class GAT(nn.Module):
 
         self.output = nn.Linear(hparams["lin_size"], hparams["output_size"])
 
-    def forward(self, data):
-        x, edge_index, batch, pos = data.x, data.edge_index, data.batch, data.pos
-        x = torch.cat((x, pos), 1)
+    def forward(self, x, edge_index, batch):
+
         for layer, activation in zip(self.conv_modules, self.activ_modules):
             x = layer(x, edge_index)
             x = activation(x)
 
         x = global_max_pool(x, batch)
-
         x = self.lin(x)
 
         return self.output(x)

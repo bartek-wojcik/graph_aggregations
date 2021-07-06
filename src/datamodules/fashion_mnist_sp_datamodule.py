@@ -16,8 +16,7 @@ class FashionMNISTSuperpixelsDataModule(LightningDataModule):
         pin_memory: bool = False,
         train_val_test_split: Sequence[int] = (55_000, 5_000, 10_000),
         n_segments: int = 100,
-        max_num_neighbors: int = 8,
-        r: int = 10,
+        k: int = 10,
         loop: bool = True,
         **kwargs,
     ):
@@ -29,8 +28,7 @@ class FashionMNISTSuperpixelsDataModule(LightningDataModule):
         self.pin_memory = pin_memory
         self.train_val_test_split = train_val_test_split
         self.n_segments = n_segments
-        self.max_num_neighbors = max_num_neighbors
-        self.r = r
+        self.k = k
         self.loop = loop
         self.slic_kwargs = kwargs
 
@@ -64,8 +62,7 @@ class FashionMNISTSuperpixelsDataModule(LightningDataModule):
         FashionMNISTSuperpixelsDataset(
             root=self.data_dir,
             n_segments=self.n_segments,
-            max_num_neighbors=self.max_num_neighbors,
-            r=self.r,
+            k=self.k,
             loop=self.loop,
             pre_transform=self.pre_transform,
             **self.slic_kwargs,
@@ -76,8 +73,7 @@ class FashionMNISTSuperpixelsDataModule(LightningDataModule):
         dataset = FashionMNISTSuperpixelsDataset(
             root=self.data_dir,
             n_segments=self.n_segments,
-            max_num_neighbors=self.max_num_neighbors,
-            r=self.r,
+            k=self.k,
             loop=self.loop,
             pre_transform=self.pre_transform,
             transform=self.transform,

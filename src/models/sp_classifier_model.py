@@ -2,7 +2,7 @@ from typing import Any, List
 import torch
 from pytorch_lightning import LightningModule
 from pytorch_lightning.metrics.classification import Accuracy
-from src.models.modules import gat, jumping_knowledge, graph_sage, gcn
+from src.models.modules import gat, jumping_knowledge, graph_sage, gcn, multi_sage_module
 
 
 class SuperpixelClassifierModel(LightningModule):
@@ -34,6 +34,8 @@ class SuperpixelClassifierModel(LightningModule):
             self.model = jumping_knowledge.JK(hparams=self.hparams)
         elif self.hparams.architecture == "GCN":
             self.model = gcn.GCN(hparams=self.hparams)
+        elif self.hparams.architecture == "MultiSage":
+            self.model = multi_sage_module.MultiSageModule(hparams=self.hparams)
         else:
             raise Exception("Incorrect architecture name!")
 
@@ -53,14 +55,16 @@ class SuperpixelClassifierModel(LightningModule):
             "val/loss": [],
         }
 
-    def forward(self, batch: Any):
-        return self.model(batch)
+    def forward(self, x, edge_index, batch):
+        return self.model(x, edge_index, batch)
 
-    def step(self, batch: Any):
-        logits = self.forward(batch)
-        loss = self.criterion(logits, batch.y)
+    def step(self, data: Any):
+        x, edge_index, batch, pos, y = data.x, data.edge_index, data.batch, data.pos, data.y
+        x = torch.cat((x, pos), 1)
+        logits = self.forward(x, edge_index, batch)
+        loss = self.criterion(logits, y)
         preds = torch.argmax(logits, dim=1)
-        return loss, preds, batch.y
+        return loss, preds, y
 
     def training_step(self, batch: Any, batch_idx: int):
         loss, preds, targets = self.step(batch)
@@ -104,5 +108,5 @@ class SuperpixelClassifierModel(LightningModule):
 
     def configure_optimizers(self):
         return torch.optim.Adam(
-            params=self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay
+            params=self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay,
         )

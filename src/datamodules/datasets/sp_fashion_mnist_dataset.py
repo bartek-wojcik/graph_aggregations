@@ -4,7 +4,7 @@ from typing import Callable, Optional
 import torch
 from torch.utils.data import ConcatDataset
 from torch_geometric.data import InMemoryDataset
-from torch_geometric.transforms import RadiusGraph, ToSLIC
+from torch_geometric.transforms import RadiusGraph, ToSLIC, KNNGraph
 from torchvision import transforms as T
 from torchvision.datasets import FashionMNIST
 from tqdm import tqdm
@@ -17,8 +17,7 @@ class FashionMNISTSuperpixelsDataset(InMemoryDataset):
         self,
         root: str = "data/",
         n_segments: int = 100,
-        max_num_neighbors: int = 8,
-        r: float = 10,
+        k: int = 10,
         loop: bool = True,
         transform: Optional[Callable] = None,
         pre_transform: Optional[Callable] = None,
@@ -26,15 +25,14 @@ class FashionMNISTSuperpixelsDataset(InMemoryDataset):
     ):
         self.data_dir = root
         self.n_segments = n_segments
-        self.max_num_neighbors = max_num_neighbors
-        self.r = r
+        self.k = k
         self.loop = loop
         self.slic_kwargs = kwargs
         self.base_transform = T.Compose(
             [
                 T.ToTensor(),
-                ToSLIC(n_segments=n_segments, **kwargs),
-                RadiusGraph(r=r, max_num_neighbors=max_num_neighbors, loop=loop),
+                ToSLIC(n_segments=n_segments, add_img=True, compactness=1, **kwargs),
+                KNNGraph(k=k, loop=loop),
             ]
         )
         super().__init__(os.path.join(root, "FashionMNIST"), transform, pre_transform)
@@ -49,8 +47,7 @@ class FashionMNISTSuperpixelsDataset(InMemoryDataset):
         """Dynamically generates filename for processed dataset based on superpixel parameters."""
         filename = ""
         filename += f"sp({self.n_segments})_"
-        filename += f"maxn({self.max_num_neighbors})_"
-        filename += f"r({self.r})_"
+        filename += f"k({self.k})_"
         filename += f"loop({self.loop})"
         for name, value in self.slic_kwargs.items():
             filename += f"_{name}({value})"
