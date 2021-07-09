@@ -18,9 +18,10 @@ trainer:
 model:
   architecture: GCN
   num_node_features: 3
+  add_pos_to_features: True
   num_conv_layers: 3
   conv_size: 256
-  lin_size: 64
+  lin_size: 128
   output_size: 10
   lr: 0.001
   weight_decay: 0

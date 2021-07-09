@@ -2,7 +2,7 @@ from typing import Any, List
 import torch
 from pytorch_lightning import LightningModule
 from pytorch_lightning.metrics.classification import Accuracy
-from src.models.modules import gat, jumping_knowledge, graph_sage, gcn, multi_sage_module
+from src.models.modules import gat, jumping_knowledge, graph_sage, gcn, vector_sage_module
 
 
 class SuperpixelClassifierModel(LightningModule):
@@ -12,7 +12,8 @@ class SuperpixelClassifierModel(LightningModule):
         self,
         architecture: str = "GraphSAGE",
         aggregation_method: str = "concat",
-        num_node_features: int = 3,
+        num_node_features: int = 1,
+        add_pos_to_features: bool = False,
         num_conv_layers: int = 3,
         conv_size: int = 128,
         lin_size: int = 128,
@@ -24,6 +25,7 @@ class SuperpixelClassifierModel(LightningModule):
         super().__init__()
 
         self.save_hyperparameters()
+        self.add_pos_to_features = add_pos_to_features
 
         # init network architecture
         if self.hparams.architecture == "GraphSAGE":
@@ -34,8 +36,8 @@ class SuperpixelClassifierModel(LightningModule):
             self.model = jumping_knowledge.JK(hparams=self.hparams)
         elif self.hparams.architecture == "GCN":
             self.model = gcn.GCN(hparams=self.hparams)
-        elif self.hparams.architecture == "MultiSage":
-            self.model = multi_sage_module.MultiSageModule(hparams=self.hparams)
+        elif self.hparams.architecture == "VectorSAGE":
+            self.model = vector_sage_module.VectorSAGEModule(hparams=self.hparams)
         else:
             raise Exception("Incorrect architecture name!")
 
@@ -55,13 +57,14 @@ class SuperpixelClassifierModel(LightningModule):
             "val/loss": [],
         }
 
-    def forward(self, x, edge_index, batch):
-        return self.model(x, edge_index, batch)
+    def forward(self, x, edge_index, batch, pos):
+        return self.model(x, edge_index, batch, pos)
 
     def step(self, data: Any):
         x, edge_index, batch, pos, y = data.x, data.edge_index, data.batch, data.pos, data.y
-        x = torch.cat((x, pos), 1)
-        logits = self.forward(x, edge_index, batch)
+        if self.add_pos_to_features:
+            x = torch.cat((x, pos), 1)
+        logits = self.forward(x, edge_index, batch, pos)
         loss = self.criterion(logits, y)
         preds = torch.argmax(logits, dim=1)
         return loss, preds, y

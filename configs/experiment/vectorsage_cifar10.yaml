@@ -16,11 +16,12 @@ trainer:
     gradient_clip_val: 0.5
 
 model:
-  architecture: MultiSage
-  num_node_features: 3
+  architecture: VectorSAGE
+  num_node_features: 5
+  add_pos_to_features: True
   num_conv_layers: 3
   conv_size: 256
-  lin_size: 64
+  lin_size: 128
   output_size: 10
   lr: 0.001
   weight_decay: 0

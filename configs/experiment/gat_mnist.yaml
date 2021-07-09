@@ -18,17 +18,13 @@ trainer:
 model:
   architecture: GAT
   num_node_features: 3
+  add_pos_to_features: True
   num_conv_layers: 3
   conv_size: 256
-  lin_size: 64
+  lin_size: 128
   output_size: 10
   lr: 0.001
   weight_decay: 0
-
-datamodule:
-  n_segments: 75
-  batch_size: 32
-  train_val_test_split: [55_000, 5_000, 10_000]
 
 callbacks:
   model_checkpoint:

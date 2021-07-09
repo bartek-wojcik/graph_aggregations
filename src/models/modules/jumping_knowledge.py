@@ -1,9 +1,9 @@
-import torch
 from torch import nn
 from torch_geometric.nn import (
     JumpingKnowledge,
     global_max_pool, GCNConv,
 )
+import torch.nn.functional as F
 
 
 class JK(nn.Module):
@@ -16,20 +16,15 @@ class JK(nn.Module):
         if hparams["num_conv_layers"] < 1:
             raise Exception("Invalid number of layers!")
 
-        activation = nn.ReLU
-
         self.conv_modules = nn.ModuleList()
-        self.activ_modules = nn.ModuleList()
 
         self.conv_modules.append(
             GCNConv(hparams["num_node_features"], hparams["conv_size"])
         )
-        self.activ_modules.append(activation())
 
         for _ in range(hparams["num_conv_layers"] - 1):
             conv = GCNConv(hparams["conv_size"], hparams["conv_size"])
             self.conv_modules.append(conv)
-            self.activ_modules.append(activation())
 
         if self.aggregation_method == 'lstm':
             self.jk = JumpingKnowledge(self.aggregation_method,
@@ -44,11 +39,13 @@ class JK(nn.Module):
             self.lin = nn.Linear(int(hparams["conv_size"]), hparams["lin_size"])
         self.output = nn.Linear(hparams["lin_size"], hparams["output_size"])
 
-    def forward(self, x, edge_index, batch):
+    def forward(self, x, edge_index, batch, pos):
         xs = []
-        for layer, activation in zip(self.conv_modules, self.activ_modules):
+        for index, layer in enumerate(self.conv_modules):
             x = layer(x, edge_index)
-            x = activation(x)
+            if index != self.hparams["num_conv_layers"]:
+                x = F.relu(x)
+                x = F.dropout(x, p=0.5, training=self.training)
             xs += [x]
 
         x = self.jk(xs)
