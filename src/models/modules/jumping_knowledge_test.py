@@ -54,3 +54,4 @@ class JK(nn.Module):
         x = F.relu(self.lin(x))
 
         return self.output(x)
+

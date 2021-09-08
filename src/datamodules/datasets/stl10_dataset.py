@@ -6,16 +6,16 @@ from torch.utils.data import ConcatDataset
 from torch_geometric.data import InMemoryDataset
 from torch_geometric.transforms import RadiusGraph, ToSLIC, KNNGraph
 from torchvision import transforms as T
-from torchvision.datasets import MNIST
+from torchvision.datasets import STL10
 from tqdm import tqdm
 
 
-class MNISTSuperpixelsDataset(InMemoryDataset):
+class STL10Dataset(InMemoryDataset):
 
     def __init__(
             self,
             root: str = "data/",
-            n_segments: int = 75,
+            n_segments: int = 400,
             k: int = 10,
             loop: bool = True,
             transform: Optional[Callable] = None,
@@ -30,11 +30,11 @@ class MNISTSuperpixelsDataset(InMemoryDataset):
         self.base_transform = T.Compose(
             [
                 T.ToTensor(),
-                ToSLIC(n_segments=n_segments, add_img=True, compactness=0.001, **kwargs),
+                ToSLIC(n_segments=n_segments, add_img=True, compactness=1, **kwargs),
                 KNNGraph(k=k, loop=loop),
             ]
         )
-        super().__init__(os.path.join(root, "MNIST2"), transform, pre_transform)
+        super().__init__(os.path.join(root, "STL10"), transform, pre_transform)
         self.data, self.slices = torch.load(self.processed_paths[0])
 
     @property
@@ -54,26 +54,26 @@ class MNISTSuperpixelsDataset(InMemoryDataset):
         return filename
 
     def download(self):
-        MNIST(
-            self.data_dir, train=True, download=True, transform=self.base_transform
+        STL10(
+            self.data_dir, split='train', download=True, transform=self.base_transform
         )
-        MNIST(
-            self.data_dir, train=False, download=True, transform=self.base_transform
+        STL10(
+            self.data_dir, split='test', download=True, transform=self.base_transform
         )
 
     def process(self):
-        trainset = MNIST(
-            self.data_dir, train=True, download=True, transform=self.base_transform
+        trainset = STL10(
+            self.data_dir, split='train', download=True, transform=self.base_transform
         )
-        testset = MNIST(
-            self.data_dir, train=False, download=True, transform=self.base_transform
+        testset = STL10(
+            self.data_dir, split='test', download=True, transform=self.base_transform
         )
         dataset = ConcatDataset(datasets=[trainset, testset])
 
         # convert to superpixels
         data_list = []
         for graph, label in tqdm(
-            dataset, desc="Generating superpixels", colour="GREEN"
+                dataset, desc="Generating superpixels", colour="GREEN"
         ):
             datapoint = graph
             datapoint.y = torch.tensor(label)
